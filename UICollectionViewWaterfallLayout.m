@@ -9,7 +9,10 @@
 
 @interface UICollectionViewWaterfallLayout()
 @property (nonatomic, assign) NSInteger itemCount;
-@property (nonatomic, assign) CGFloat interitemSpacing;
+
+@property (nonatomic, assign) CGFloat interItemHorizontalSpacing;
+@property (nonatomic, assign) CGFloat interItemVerticalSpacing;
+
 @property (nonatomic, strong) NSMutableArray *columnHeights; // height for each column
 @property (nonatomic, strong) NSMutableArray *itemAttributes; // attributes for each item
 @end
@@ -33,10 +36,18 @@
     }
 }
 
-- (void)setSectionInset:(UIEdgeInsets)sectionInset
+- (void)setContentInset:(UIEdgeInsets)contentInset
 {
-    if (!UIEdgeInsetsEqualToEdgeInsets(_sectionInset, sectionInset)) {
-        _sectionInset = sectionInset;
+    if (!UIEdgeInsetsEqualToEdgeInsets(_contentInset, contentInset)) {
+        _contentInset = contentInset;
+        [self invalidateLayout];
+    }
+}
+
+- (void)setItemMargins:(UIOffset)itemMargins
+{
+    if (!UIOffsetEqualToOffset(_itemMargins, itemMargins)) {
+        _itemMargins = itemMargins;
         [self invalidateLayout];
     }
 }
@@ -46,7 +57,8 @@
 {
     _columnCount = 2;
     _itemWidth = 140.0f;
-    _sectionInset = UIEdgeInsetsZero;
+    _contentInset = UIEdgeInsetsZero;
+    _itemMargins = UIOffsetZero;
 }
 
 - (id)init
@@ -76,24 +88,44 @@
     _itemCount = [[self collectionView] numberOfItemsInSection:0];
 
     NSAssert(_columnCount > 1, @"columnCount for UICollectionViewWaterfallLayout should be greater than 1.");
-    CGFloat width = self.collectionView.frame.size.width - _sectionInset.left - _sectionInset.right;
-    _interitemSpacing = floorf((width - _columnCount * _itemWidth) / (_columnCount - 1));
+    CGFloat width = self.collectionView.frame.size.width - _contentInset.left - _contentInset.right;
+    CGFloat maximumMargin = floorf((width - _columnCount * _itemWidth) / (_columnCount - 1));
+
+    if (UIOffsetEqualToOffset(_itemMargins, UIOffsetZero)) {
+
+        // Generate the margins by using up all available space
+        _interItemHorizontalSpacing = maximumMargin;
+        _interItemVerticalSpacing = maximumMargin;
+    } else {
+
+        // Base margins off the itemMargins iVar and then center
+        _interItemHorizontalSpacing = MIN(_itemMargins.horizontal, maximumMargin);
+        _interItemVerticalSpacing = MIN(_itemMargins.vertical, maximumMargin);
+    }
+
+    // If the interItem horizontal spacing is less than the max, center the items
+    CGFloat centeringOffset = ((maximumMargin - _interItemHorizontalSpacing) / 2) * _columnCount;
 
     _itemAttributes = [NSMutableArray arrayWithCapacity:_itemCount];
     _columnHeights = [NSMutableArray arrayWithCapacity:_columnCount];
+
+    // Start all the columns with the content inset
     for (NSInteger idx = 0; idx < _columnCount; idx++) {
-        [_columnHeights addObject:@(_sectionInset.top)];
+        [_columnHeights addObject:@(_contentInset.top)];
     }
 
     // Item will be put into shortest column.
     for (NSInteger idx = 0; idx < _itemCount; idx++) {
+
         NSIndexPath *indexPath = [NSIndexPath indexPathForItem:idx inSection:0];
         CGFloat itemHeight = [self.delegate collectionView:self.collectionView
                                                     layout:self
                                   heightForItemAtIndexPath:indexPath];
+
         NSUInteger columnIndex = [self shortestColumnIndex];
-        CGFloat xOffset = _sectionInset.left + (_itemWidth + _interitemSpacing) * columnIndex;
+        CGFloat xOffset = _contentInset.left + centeringOffset + (_itemWidth + _interItemHorizontalSpacing) * columnIndex;
         CGFloat yOffset = [(_columnHeights[columnIndex]) floatValue];
+        
         CGPoint itemCenter = CGPointMake(floorf(xOffset + _itemWidth/2), floorf((yOffset + itemHeight/2)));
 
          UICollectionViewLayoutAttributes *attributes =
@@ -101,7 +133,8 @@
         attributes.size = CGSizeMake(self.itemWidth, itemHeight);
         attributes.center = itemCenter;
         [_itemAttributes addObject:attributes];
-        _columnHeights[columnIndex] = @(yOffset + itemHeight + _interitemSpacing);
+        
+        _columnHeights[columnIndex] = @(yOffset + itemHeight + _interItemVerticalSpacing);
     }
 }
 
@@ -113,8 +146,8 @@
 
     CGSize contentSize = self.collectionView.frame.size;
     NSUInteger columnIndex = [self longestColumnIndex];
-    CGFloat height = [self.columnHeights[columnIndex] floatValue];
-    contentSize.height = height - self.interitemSpacing + self.sectionInset.bottom;
+    CGFloat height = [_columnHeights[columnIndex] floatValue];
+    contentSize.height = height - _interItemHorizontalSpacing + _contentInset.bottom;
     return contentSize;
 }
 
@@ -131,7 +164,7 @@
 //    return [self.itemAttributes filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
 //        return CGRectIntersectsRect(rect, [evaluatedObject frame]);
 //    }]];
-    return self.itemAttributes;
+    return _itemAttributes;
 }
 
 - (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
