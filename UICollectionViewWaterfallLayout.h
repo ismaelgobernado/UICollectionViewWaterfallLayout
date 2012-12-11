@@ -22,12 +22,12 @@
     // Width for every column
 @property (nonatomic, assign) CGFloat itemWidth;
 
-    // The outside margins used to layout content
+    // The margins used to lay out content in a section
 @property (nonatomic, assign) UIEdgeInsets contentInset;
 
     // The margins between items
 @property (nonatomic, assign) UIOffset itemMargins;
 
-- (CGFloat)longestColumnHeightForHeights:(NSNumber *)heights withWidth:(CGFloat)width;
+- (CGFloat)longestColumnHeightForHeights:(NSArray *)heights withWidth:(CGFloat)width;
 
 @end

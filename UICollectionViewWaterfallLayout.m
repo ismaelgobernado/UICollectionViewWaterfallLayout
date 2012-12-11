@@ -85,12 +85,31 @@
 {
     [super prepareLayout];
 
-    _itemCount = [[self collectionView] numberOfItemsInSection:0];
+    // This is ugly and hacky and urgh
+    
+    if ([self collectionView] && _delegate) {
+        NSInteger itemCount = [[self collectionView] numberOfItemsInSection:0];
+        NSMutableArray *items = [NSMutableArray arrayWithCapacity:itemCount];
 
+        for (int i = 0; i < itemCount; i++) {
+            NSIndexPath *indexPath = [NSIndexPath indexPathForItem:i inSection:0];
+            CGFloat height = [self.delegate collectionView:self.collectionView
+                                   layout:self
+                                  heightForItemAtIndexPath:indexPath];
+            [items addObject:@(height)];
+        }
+        CGFloat width = self.collectionView.frame.size.width - _contentInset.left - _contentInset.right;
+
+        [self setupLayoutWithCount:itemCount width:width andItems:items];
+    }
+}
+
+- (void)setupLayoutWithCount:(CGFloat)itemCount width:(CGFloat)width andItems:(NSArray *)array {
     NSAssert(_columnCount > 1, @"columnCount for UICollectionViewWaterfallLayout should be greater than 1.");
-    CGFloat width = self.collectionView.frame.size.width - _contentInset.left - _contentInset.right;
-    CGFloat maximumMargin = floorf((width - _columnCount * _itemWidth) / (_columnCount - 1));
 
+    CGFloat maximumMargin = floorf((width - _columnCount * _itemWidth) / (_columnCount - 1));
+    _itemCount = itemCount;
+    
     if (UIOffsetEqualToOffset(_itemMargins, UIOffsetZero)) {
 
         // Generate the margins by using up all available space
@@ -106,7 +125,7 @@
     // If the interItem horizontal spacing is less than the max, center the items
     CGFloat centeringOffset = ((maximumMargin - _interItemHorizontalSpacing) / 2) * _columnCount;
 
-    _itemAttributes = [NSMutableArray arrayWithCapacity:_itemCount];
+    _itemAttributes = [NSMutableArray arrayWithCapacity:itemCount];
     _columnHeights = [NSMutableArray arrayWithCapacity:_columnCount];
 
     // Start all the columns with the content inset
@@ -115,25 +134,22 @@
     }
 
     // Item will be put into shortest column.
-    for (NSInteger idx = 0; idx < _itemCount; idx++) {
+    for (NSInteger idx = 0; idx < itemCount; idx++) {
 
         NSIndexPath *indexPath = [NSIndexPath indexPathForItem:idx inSection:0];
-        CGFloat itemHeight = [self.delegate collectionView:self.collectionView
-                                                    layout:self
-                                  heightForItemAtIndexPath:indexPath];
+        CGFloat itemHeight = [array[idx] floatValue];
 
         NSUInteger columnIndex = [self shortestColumnIndex];
         CGFloat xOffset = _contentInset.left + centeringOffset + (_itemWidth + _interItemHorizontalSpacing) * columnIndex;
         CGFloat yOffset = [(_columnHeights[columnIndex]) floatValue];
-        
         CGPoint itemCenter = CGPointMake(floorf(xOffset + _itemWidth/2), floorf((yOffset + itemHeight/2)));
 
-         UICollectionViewLayoutAttributes *attributes =
-        [ UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
+        UICollectionViewLayoutAttributes *attributes =
+        [UICollectionViewLayoutAttributes layoutAttributesForCellWithIndexPath:indexPath];
         attributes.size = CGSizeMake(self.itemWidth, itemHeight);
         attributes.center = itemCenter;
         [_itemAttributes addObject:attributes];
-        
+
         _columnHeights[columnIndex] = @(yOffset + itemHeight + _interItemVerticalSpacing);
     }
 }
@@ -153,7 +169,7 @@
 
 - ( UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)path
 {
-    return (self.itemAttributes)[path.item];
+    return _itemAttributes[path.item];
 }
 
 - (NSArray *)layoutAttributesForElementsInRect:(CGRect)rect
@@ -161,10 +177,10 @@
 //    // Currently, PSTCollectionView has issue with this.
 //    // It can't display items correctly.
 //    // But UICollectionView works perfectly.
-//    return [self.itemAttributes filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
-//        return CGRectIntersectsRect(rect, [evaluatedObject frame]);
-//    }]];
-    return _itemAttributes;
+    return [self.itemAttributes filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
+        return CGRectIntersectsRect(rect, [evaluatedObject frame]);
+    }]];
+//    return _itemAttributes;
 }
 
 - (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
@@ -205,6 +221,11 @@
     }];
 
     return index;
+}
+
+- (CGFloat)longestColumnHeightForHeights:(NSArray *)heights withWidth:(CGFloat)width {
+    [self setupLayoutWithCount:heights.count width:width andItems:heights];
+    return [_columnHeights[[self longestColumnIndex]] floatValue];
 }
 
 @end
