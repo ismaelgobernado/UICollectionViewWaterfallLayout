@@ -84,31 +84,39 @@
 - (void)prepareLayout
 {
     [super prepareLayout];
-
-    // This is ugly and hacky and urgh
     
     if ([self collectionView] && _delegate) {
-        NSInteger itemCount = [[self collectionView] numberOfItemsInSection:0];
-        NSMutableArray *items = [NSMutableArray arrayWithCapacity:itemCount];
 
+        // We need to pre-load the heights and the widths from the collectionview
+        // and our delegate in order to pass these through to setupLayoutWithWidth
+
+        NSInteger itemCount = [[self collectionView] numberOfItemsInSection:0];
+        NSMutableArray *heights = [NSMutableArray arrayWithCapacity:itemCount];
+        CGFloat width = self.collectionView.frame.size.width - _contentInset.left - _contentInset.right;
+
+        // Ask delegates for all the heights
         for (int i = 0; i < itemCount; i++) {
             NSIndexPath *indexPath = [NSIndexPath indexPathForItem:i inSection:0];
             CGFloat height = [self.delegate collectionView:self.collectionView
                                    layout:self
                                   heightForItemAtIndexPath:indexPath];
-            [items addObject:@(height)];
+            [heights addObject:@(height)];
         }
-        CGFloat width = self.collectionView.frame.size.width - _contentInset.left - _contentInset.right;
 
-        [self setupLayoutWithCount:itemCount width:width andItems:items];
+        [self setupLayoutWithWidth:width andHeights:heights];
     }
 }
 
-- (void)setupLayoutWithCount:(CGFloat)itemCount width:(CGFloat)width andItems:(NSArray *)array {
+- (CGFloat)longestColumnHeightForHeights:(NSArray *)heights withWidth:(CGFloat)width {
+    [self setupLayoutWithWidth:width andHeights:heights];
+    return [_columnHeights[[self longestColumnIndex]] floatValue];
+}
+
+- (void)setupLayoutWithWidth:(CGFloat)width andHeights:(NSArray *)array {
     NSAssert(_columnCount > 1, @"columnCount for UICollectionViewWaterfallLayout should be greater than 1.");
 
     CGFloat maximumMargin = floorf((width - _columnCount * _itemWidth) / (_columnCount - 1));
-    _itemCount = itemCount;
+    _itemCount = array.count;
     
     if (UIOffsetEqualToOffset(_itemMargins, UIOffsetZero)) {
 
@@ -125,7 +133,7 @@
     // If the interItem horizontal spacing is less than the max, center the items
     CGFloat centeringOffset = ((maximumMargin - _interItemHorizontalSpacing) / 2) * _columnCount;
 
-    _itemAttributes = [NSMutableArray arrayWithCapacity:itemCount];
+    _itemAttributes = [NSMutableArray arrayWithCapacity:_itemCount];
     _columnHeights = [NSMutableArray arrayWithCapacity:_columnCount];
 
     // Start all the columns with the content inset
@@ -134,7 +142,7 @@
     }
 
     // Item will be put into shortest column.
-    for (NSInteger idx = 0; idx < itemCount; idx++) {
+    for (NSInteger idx = 0; idx < _itemCount; idx++) {
 
         NSIndexPath *indexPath = [NSIndexPath indexPathForItem:idx inSection:0];
         CGFloat itemHeight = [array[idx] floatValue];
@@ -221,11 +229,6 @@
     }];
 
     return index;
-}
-
-- (CGFloat)longestColumnHeightForHeights:(NSArray *)heights withWidth:(CGFloat)width {
-    [self setupLayoutWithCount:heights.count width:width andItems:heights];
-    return [_columnHeights[[self longestColumnIndex]] floatValue];
 }
 
 @end
