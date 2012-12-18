@@ -5,6 +5,8 @@ iOS 6 introduced a new feature called [UICollectionView](http://developer.apple.
 
 This layout is inspired by [Pinterest](http://pinterest.com/). It also is compatible with [PSTUICollectionView][1].
 
+This fork is for iOS6 only, and it comes with some extra features so that you can choose the distance between items and get the height of the longest column without creating the UICollectionView (useful for tablecell heights.)
+
 Screen Shots
 ------------
 ![2 columns](https://raw.github.com/chiahsien/UICollectionViewWaterfallLayout/master/Screenshots/2-columns.png)

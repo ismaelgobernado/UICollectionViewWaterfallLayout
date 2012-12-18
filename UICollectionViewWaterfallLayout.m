@@ -131,7 +131,7 @@
     }
 
     // If the interItem horizontal spacing is less than the max, center the items
-    CGFloat centeringOffset = ((maximumMargin - _interItemHorizontalSpacing) / 2) * _columnCount;
+    CGFloat centeringOffset = ((maximumMargin - _interItemHorizontalSpacing) / 2) * (_columnCount - 1 );
 
     _itemAttributes = [NSMutableArray arrayWithCapacity:_itemCount];
     _columnHeights = [NSMutableArray arrayWithCapacity:_columnCount];
@@ -149,6 +149,7 @@
 
         NSUInteger columnIndex = [self shortestColumnIndex];
         CGFloat xOffset = _contentInset.left + centeringOffset + (_itemWidth + _interItemHorizontalSpacing) * columnIndex;
+
         CGFloat yOffset = [(_columnHeights[columnIndex]) floatValue];
         CGPoint itemCenter = CGPointMake(floorf(xOffset + _itemWidth/2), floorf((yOffset + itemHeight/2)));
 
@@ -182,14 +183,10 @@
 
 - (NSArray *)layoutAttributesForElementsInRect:(CGRect)rect
 {
-//    // Currently, PSTCollectionView has issue with this.
-//    // It can't display items correctly.
-//    // But UICollectionView works perfectly.
-    return [self.itemAttributes filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
+      return [self.itemAttributes filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
         return CGRectIntersectsRect(rect, [evaluatedObject frame]);
     }]];
-//    return _itemAttributes;
-}
+  }
 
 - (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
 {
