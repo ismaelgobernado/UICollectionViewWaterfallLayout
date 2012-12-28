@@ -10,6 +10,11 @@
 - (CGFloat)collectionView:( UICollectionView *)collectionView
                    layout:(UICollectionViewWaterfallLayout *)collectionViewLayout
  heightForItemAtIndexPath:(NSIndexPath *)indexPath;
+
+@optional
+- (CGFloat)collectionView:( UICollectionView *)collectionView
+heightForFooterWithLayout:(UICollectionViewWaterfallLayout *)collectionViewLayout;
+
 @end
 
 @interface UICollectionViewWaterfallLayout :  UICollectionViewLayout

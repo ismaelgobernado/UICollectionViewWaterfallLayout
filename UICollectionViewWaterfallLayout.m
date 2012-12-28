@@ -15,11 +15,13 @@
 
 @property (nonatomic, strong) NSMutableArray *columnHeights; // height for each column
 @property (nonatomic, strong) NSMutableArray *itemAttributes; // attributes for each item
+@property (nonatomic, strong) UICollectionViewLayoutAttributes *footerAttributes;
 @end
 
 @implementation UICollectionViewWaterfallLayout
 
 #pragma mark - Accessors
+
 - (void)setColumnCount:(NSUInteger)columnCount
 {
     if (_columnCount != columnCount) {
@@ -53,6 +55,7 @@
 }
 
 #pragma mark - Init
+
 - (void)commonInit
 {
     _columnCount = 2;
@@ -71,6 +74,7 @@
 }
 
 #pragma mark - Life cycle
+
 - (void)dealloc
 {
     [_columnHeights removeAllObjects];
@@ -78,9 +82,12 @@
 
     [_itemAttributes removeAllObjects];
     _itemAttributes = nil;
+
+    _footerAttributes = nil;
 }
 
 #pragma mark - Methods to Override
+
 - (void)prepareLayout
 {
     [super prepareLayout];
@@ -131,7 +138,7 @@
     }
 
     // If the interItem horizontal spacing is less than the max, center the items
-    CGFloat centeringOffset = ((maximumMargin - _interItemHorizontalSpacing) / 2) * (_columnCount - 1 );
+    CGFloat centeringOffset = ((maximumMargin - _interItemHorizontalSpacing) / 2) * _columnCount;
 
     _itemAttributes = [NSMutableArray arrayWithCapacity:_itemCount];
     _columnHeights = [NSMutableArray arrayWithCapacity:_columnCount];
@@ -149,7 +156,6 @@
 
         NSUInteger columnIndex = [self shortestColumnIndex];
         CGFloat xOffset = _contentInset.left + centeringOffset + (_itemWidth + _interItemHorizontalSpacing) * columnIndex;
-
         CGFloat yOffset = [(_columnHeights[columnIndex]) floatValue];
         CGPoint itemCenter = CGPointMake(floorf(xOffset + _itemWidth/2), floorf((yOffset + itemHeight/2)));
 
@@ -160,6 +166,18 @@
         [_itemAttributes addObject:attributes];
 
         _columnHeights[columnIndex] = @(yOffset + itemHeight + _interItemVerticalSpacing);
+    }
+
+    if (_delegate && [_delegate respondsToSelector:@selector(collectionView:heightForFooterWithLayout:)]) {
+        NSLog(@"%@ - %@", NSStringFromSelector(_cmd), self);
+        
+        NSIndexPath *zeroIndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
+        CGFloat yOffset = [_columnHeights[[self longestColumnIndex]] floatValue];
+        CGFloat height = [_delegate collectionView:self.collectionView heightForFooterWithLayout:self];
+        if (height > 0) {
+            _footerAttributes =  [UICollectionViewLayoutAttributes layoutAttributesForDecorationViewOfKind:UICollectionElementKindSectionFooter withIndexPath:zeroIndexPath];
+            _footerAttributes.frame = CGRectMake(0, yOffset + _interItemHorizontalSpacing, width, height);
+        }
     }
 }
 
@@ -173,8 +191,21 @@
     NSUInteger columnIndex = [self longestColumnIndex];
     CGFloat height = [_columnHeights[columnIndex] floatValue];
     contentSize.height = height - _interItemHorizontalSpacing + _contentInset.bottom;
+    if (_footerAttributes) {
+        contentSize.height += CGRectGetHeight(_footerAttributes.frame) + _interItemHorizontalSpacing;
+    }
     return contentSize;
 }
+
+- (UICollectionViewLayoutAttributes *)layoutAttributesForDecorationViewOfKind:(NSString *)decorationViewKind atIndexPath:(NSIndexPath *)indexPath
+{
+    if ([decorationViewKind isEqualToString:UICollectionElementKindSectionFooter]) {
+        // ignore indexPath
+        return _footerAttributes;
+    }
+    return nil;
+}
+
 
 - ( UICollectionViewLayoutAttributes *)layoutAttributesForItemAtIndexPath:(NSIndexPath *)path
 {
@@ -183,10 +214,11 @@
 
 - (NSArray *)layoutAttributesForElementsInRect:(CGRect)rect
 {
-      return [self.itemAttributes filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
+    NSArray *allAttributes = [self.itemAttributes arrayByAddingObject:self.footerAttributes];
+    return [allAttributes filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
         return CGRectIntersectsRect(rect, [evaluatedObject frame]);
     }]];
-  }
+}
 
 - (BOOL)shouldInvalidateLayoutForBoundsChange:(CGRect)newBounds
 {
