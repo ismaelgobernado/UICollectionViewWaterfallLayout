@@ -214,7 +214,13 @@
 
 - (NSArray *)layoutAttributesForElementsInRect:(CGRect)rect
 {
-    NSArray *allAttributes = [self.itemAttributes arrayByAddingObject:self.footerAttributes];
+    NSArray *allAttributes = nil;
+    if (self.footerAttributes) {
+        allAttributes = [self.itemAttributes arrayByAddingObject:self.footerAttributes];
+    } else {
+        allAttributes = self.itemAttributes;
+    }
+
     return [allAttributes filteredArrayUsingPredicate:[NSPredicate predicateWithBlock:^BOOL(id evaluatedObject, NSDictionary *bindings) {
         return CGRectIntersectsRect(rect, [evaluatedObject frame]);
     }]];
