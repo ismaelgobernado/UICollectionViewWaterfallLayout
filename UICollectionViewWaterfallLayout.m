@@ -168,8 +168,8 @@
         _columnHeights[columnIndex] = @(yOffset + itemHeight + _interItemVerticalSpacing);
     }
 
+    // Generate the footer's attributes
     if (_delegate && [_delegate respondsToSelector:@selector(collectionView:heightForFooterWithLayout:)]) {
-        NSLog(@"%@ - %@", NSStringFromSelector(_cmd), self);
         
         NSIndexPath *zeroIndexPath = [NSIndexPath indexPathForItem:0 inSection:0];
         CGFloat yOffset = [_columnHeights[[self longestColumnIndex]] floatValue];
